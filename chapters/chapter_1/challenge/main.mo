@@ -3,7 +3,7 @@ import Buffer "mo:base/Buffer";
 actor {
 
     let name : Text = "ICP bootcamp";
-    var manifesto : Text = "Learn more about web3 and motoko";
+    var manifesto : Text = "Learn more about web3 and motoko for the ICP bootcamp";
     var goals : Buffer.Buffer<Text> = Buffer.Buffer<Text>(10);
 
     public shared query func getName() : async Text {
