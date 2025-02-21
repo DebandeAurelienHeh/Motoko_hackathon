@@ -112,6 +112,7 @@ actor {
     //Project 3
 
     let wallet = HashMap.HashMap<Principal, Nat>(0, Principal.equal, Principal.hash);
+    let symbol : Text = "Sym";
 
     public query func tokenName() : async Text {
         return name;
@@ -134,6 +135,11 @@ actor {
         };
         wallet.put(owner, ownerBalance - amount);
         return #ok();
+    };
+
+    func _burn(owner: Principal, amount:Nat) : () {
+        let balance = Option.get(wallet.get(owner), 0);
+        wallet.put(owner, balance-amount);
     };
 
     public shared ({ caller }) func transfer(from : Principal, to : Principal, amount : Nat) : async Result<(), Text> {
