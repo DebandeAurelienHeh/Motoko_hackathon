@@ -11,7 +11,7 @@ actor Webpage {
     type HttpResponse = Types.HttpResponse;
 
     // ID du DAO canister (à remplacer par l'ID réel après déploiement)
-    stable let daoCanisterId : Principal = Principal.fromText("aaaaa-aa");
+    stable let daoCanisterId : Principal = Principal.fromText("72j4w-6qaaa-aaaab-qacxq-cai");
     
     // Le manifeste doit toujours correspondre à celui du DAO
     stable var manifesto : Text = "Let's graduate!";

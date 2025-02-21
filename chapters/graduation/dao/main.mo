@@ -1,16 +1,8 @@
 import Result "mo:base/Result";
-import HashMap "mo:base/HashMap";
-import TrieMap "mo:base/TrieMap";
 import Principal "mo:base/Principal";
 import Text "mo:base/Text";
-import Buffer "mo:base/Buffer";
-import Nat64 "mo:base/Nat64";
-import Iter "mo:base/Iter";
-import Blob "mo:base/Blob";
-import Debug "mo:base/Debug";
-import Option "mo:base/Option";
-import Time "mo:base/Time";
 import Array "mo:base/Array";
+import Time "mo:base/Time";
 import Types "types";
 
 actor {
@@ -21,94 +13,76 @@ actor {
     type ProposalId = Types.ProposalId;
     type Proposal = Types.Proposal;
     type Vote = Types.Vote;
-    type HttpRequest = Types.HttpRequest;
-    type HttpResponse = Types.HttpResponse;
 
-    // The principal of the Webpage canister associated with this DAO canister (needs to be updated with the ID of your Webpage canister)
-    stable let canisterIdWebpage : Principal = Principal.fromText("aaaaa-aa");
+    // The principal of the Webpage canister associated with this DAO canister
+    stable let canisterIdWebpage : Principal = Principal.fromText("xumeo-zyaaa-aaaab-qadaa-cai");
     stable var manifesto = "Graduate from motoko Bootcamp et succeed the ICP bootcamp";
     stable let name = "ICP bootcamp";
-    stable var goals = Buffer.Buffer<Text>(0);
+    stable var goals : [Text] = [];
 
-    // HashMap to store members
-    stable var members = HashMap.HashMap<Principal, Member>(0, Principal.equal, Principal.hash);
+    // Array to store members (stable)
+    stable var members : [(Principal, Member)] = [];
 
-    // HashMap to store proposals
-    stable var proposals = HashMap.HashMap<ProposalId, Proposal>(0, Nat64.equal, Nat64.hash);
+    // Array to store proposals (stable)
+    stable var proposals : [(ProposalId, Proposal)] = [];
 
     // Counter for generating unique proposal IDs
-    stable var proposalIdCounter : Nat64 = 0;
-
-    // Returns the name of the DAO
-    public query func getName() : async Text {
-        return name;
-    };
-
-    // Returns the manifesto of the DAO
-    public query func getManifesto() : async Text {
-        return manifesto;
-    };
-
-    // Returns the goals of the DAO
-    public query func getGoals() : async [Text] {
-        return Buffer.toArray(goals);
-    };
+    stable var proposalIdCounter : Nat = 0;
 
     // Register a new member in the DAO with the given name and principal of the caller
-    // Airdrop 10 MBC tokens to the new member
-    // New members are always Student
-    // Returns an error if the member already exists
-    public shared ({ caller }) func registerMember(member : Member) : async Result<(), Text> {
-        switch (members.get(caller)) {
+    public shared ({ caller }) func registerMember(name : Text) : async Result<(), Text> {
+        switch (Array.find<(Principal, Member)>(members, func ((p, _)) : Bool { p == caller })) {
             case (null) {
-                members.put(caller, member);
+                let newMember : Member = {
+                    name = name;
+                    role = #Student;
+                };
+                members := Array.append<(Principal, Member)>(members, [(caller, newMember)]);
                 return #ok();
             };
-            case (? oldMember) {
+            case (? _) {
                 return #err("The principal is already linked to a member profile");
             };
         };
     };
 
     // Get the member with the given principal
-    // Returns an error if the member does not exist
     public query func getMember(p : Principal) : async Result<Member, Text> {
-        switch (members.get(p)) {
+        switch (Array.find<(Principal, Member)>(members, func ((principal, _)) : Bool { principal == p })) {
             case (null) {
                 return #err("No member linked to this principal");
             };
-            case (? member) {
+            case (? (_, member : Member)) {
                 return #ok(member);
             };
         };
     };
 
     // Graduate the student with the given principal
-    // Returns an error if the student does not exist or is not a student
-    // Returns an error if the caller is not a mentor
     public shared ({ caller }) func graduate(student : Principal) : async Result<(), Text> {
-        switch (members.get(caller)) {
+        switch (Array.find<(Principal, Member)>(members, func ((p, _)) : Bool { p == caller })) {
             case (null) {
                 return #err("Caller is not a member");
             };
-            case (? callerMember) {
+            case (? (_, callerMember : Member)) {
                 if (callerMember.role != #Mentor) {
                     return #err("Caller is not a mentor");
                 };
-                switch (members.get(student)) {
+                switch (Array.find<(Principal, Member)>(members, func ((p, _)) : Bool { p == student })) {
                     case (null) {
                         return #err("Student does not exist");
                     };
-                    case (? studentMember) {
+                    case (? (_, studentMember : Member)) {
                         if (studentMember.role != #Student) {
                             return #err("Member is not a student");
                         };
                         let updatedMember : Member = {
                             name = studentMember.name;
                             role = #Graduate;
-                            tokens = studentMember.tokens;
                         };
-                        members.put(student, updatedMember);
+                        members := Array.map<(Principal, Member), (Principal, Member)>(members, func ((p, m)) : (Principal, Member) {
+                            if (p == student) (p, updatedMember) else (p, m)
+                        });
                         return #ok();
                     };
                 };
@@ -117,44 +91,40 @@ actor {
     };
 
     // Create a new proposal and returns its id
-    // Returns an error if the caller is not a mentor or doesn't own at least 1 MBC token
     public shared ({ caller }) func createProposal(content : ProposalContent) : async Result<ProposalId, Text> {
-        switch (members.get(caller)) {
+        switch (Array.find<(Principal, Member)>(members, func ((p, _)) : Bool { p == caller })) {
             case (null) {
                 return #err("Caller is not a member");
             };
-            case (? member) {
+            case (? (_, member : Member)) {
                 if (member.role != #Mentor) {
                     return #err("Caller is not a mentor");
-                };
-                if (member.tokens < 1) {
-                    return #err("Caller does not own at least 1 MBC token");
                 };
                 let proposalId = proposalIdCounter;
                 proposalIdCounter += 1;
                 let proposal : Proposal = {
                     id = proposalId;
                     content = content;
-                    proposer = caller;
-                    votesFor = 0;
-                    votesAgainst = 0;
-                    voters = [];
-                    executed = false;
+                    creator = caller;
+                    created = Time.now();
+                    executed = null;
+                    votes = [];
+                    voteScore = 0;
+                    status = #Open;
                 };
-                proposals.put(proposalId, proposal);
+                proposals := Array.append<(ProposalId, Proposal)>(proposals, [(proposalId, proposal)]);
                 return #ok(proposalId);
             };
         };
     };
 
     // Get the proposal with the given id
-    // Returns an error if the proposal does not exist
     public query func getProposal(id : ProposalId) : async Result<Proposal, Text> {
-        switch (proposals.get(id)) {
+        switch (Array.find<(ProposalId, Proposal)>(proposals, func ((pId, _)) : Bool { pId == id })) {
             case (null) {
                 return #err("Proposal does not exist");
             };
-            case (? proposal) {
+            case (? (_, proposal : Proposal)) {
                 return #ok(proposal);
             };
         };
@@ -162,37 +132,40 @@ actor {
 
     // Returns all the proposals
     public query func getAllProposal() : async [Proposal] {
-        return Iter.toArray(proposals.vals());
+        return Array.map<(ProposalId, Proposal), Proposal>(proposals, func ((_, p)) : Proposal { p });
     };
 
     // Vote for the given proposal
-    // Returns an error if the proposal does not exist or the member is not allowed to vote
     public shared ({ caller }) func voteProposal(proposalId : ProposalId, yesOrNo : Bool) : async Result<(), Text> {
-        switch (proposals.get(proposalId)) {
+        switch (Array.find<(ProposalId, Proposal)>(proposals, func ((pId, _)) : Bool { pId == proposalId })) {
             case (null) {
                 return #err("Proposal does not exist");
             };
-            case (? proposal) {
-                if (proposal.executed) {
-                    return #err("Proposal has already been executed");
+            case (? (_, proposal : Proposal)) {
+                if (proposal.status != #Open) {
+                    return #err("Proposal is not open for voting");
                 };
-                switch (members.get(caller)) {
+                switch (Array.find<(Principal, Member)>(members, func ((p, _)) : Bool { p == caller })) {
                     case (null) {
                         return #err("Caller is not a member");
                     };
-                    case (? member) {
-                        if (member.tokens < 1) {
-                            return #err("Caller does not own at least 1 MBC token");
-                        };
-                        if (Array.find(proposal.voters, func (v : Principal) : Bool { v == caller }) != null) {
+                    case (? (_, member : Member)) {
+                        if (Array.find<Vote>(proposal.votes, func (v : Vote) : Bool { v.member == caller }) != null) {
                             return #err("Caller has already voted");
                         };
-                        let updatedProposal : Proposal = if (yesOrNo) {
-                            { proposal with votesFor = proposal.votesFor + 1; voters = Array.append(proposal.voters, [caller]) };
-                        } else {
-                            { proposal with votesAgainst = proposal.votesAgainst + 1; voters = Array.append(proposal.voters, [caller]) };
+                        let vote : Vote = {
+                            member = caller;
+                            votingPower = 1; // Assuming each member has a voting power of 1
+                            yesOrNo = yesOrNo;
                         };
-                        proposals.put(proposalId, updatedProposal);
+                        let updatedProposal : Proposal = {
+                            proposal with 
+                            votes = Array.append<Vote>(proposal.votes, [vote]);
+                            voteScore = proposal.voteScore + (if (yesOrNo) 1 else -1);
+                        };
+                        proposals := Array.map<(ProposalId, Proposal), (ProposalId, Proposal)>(proposals, func ((pId, p)) : (ProposalId, Proposal) {
+                            if (pId == proposalId) (pId, updatedProposal) else (pId, p)
+                        });
                         return #ok();
                     };
                 };
@@ -204,5 +177,4 @@ actor {
     public query func getIdWebpage() : async Principal {
         return canisterIdWebpage;
     };
-
 };
