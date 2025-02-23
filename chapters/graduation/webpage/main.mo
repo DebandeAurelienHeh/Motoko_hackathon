@@ -10,7 +10,7 @@ actor Webpage {
     type HttpResponse = Types.HttpResponse;
 
     stable var manifesto : Text = "Let's graduate!";
-    stable var daoPrincipal : Principal = Principal.fromText("3xyym-nqaaa-aaaab-qacnq-cai"); // À remplacer après déploiement
+    stable var daoPrincipal : Principal = Principal.fromText("7tkxk-iyaaa-aaaab-qacwa-cai"); // À remplacer après déploiement
 
     public query func http_request(request : HttpRequest) : async HttpResponse {
         {

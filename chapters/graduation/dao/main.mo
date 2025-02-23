@@ -20,7 +20,7 @@ actor {
     type HttpRequest = Types.HttpRequest;
     type HttpResponse = Types.HttpResponse;
 
-    stable let canisterIdWebpage : Principal = Principal.fromText("3f6pv-baaaa-aaaab-qacoq-cai"); // À remplacer après déploiement
+    stable let canisterIdWebpage : Principal = Principal.fromText("5hus6-nyaaa-aaaab-qacya-cai"); // À remplacer après déploiement
     stable var manifesto = "Build the future of Motoko";
     stable let name = "Motoko Bootcamp DAO";
     stable var goals : [Text] = [];
