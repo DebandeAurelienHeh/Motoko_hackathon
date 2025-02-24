@@ -21,8 +21,8 @@ actor {
     type HttpResponse = Types.HttpResponse;
 
     stable let canisterIdWebpage : Principal = Principal.fromText("5hus6-nyaaa-aaaab-qacya-cai"); // À remplacer après déploiement
-    stable var manifesto = "Build the future of Motoko";
-    stable let name = "Motoko Bootcamp DAO";
+    stable var manifesto = "Let's graduate for the motoko_bootcamp and achieve my learning for this subject";
+    stable let name = "Motoko Bootcamp DAO graduation";
     stable var goals : [Text] = [];
     
     // Structures de données stables
